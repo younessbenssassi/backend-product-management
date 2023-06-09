@@ -2,6 +2,7 @@
 
 namespace App\Models\Traits;
 
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 trait LoadHandler
@@ -20,7 +21,7 @@ trait LoadHandler
 
     ): mixed {
         $search = $request->get('search');
-        $page = $request->get('page', 1);
+        $page = $request->integer('page', 1);
 
         $offset = $page > 1 ? $page * $limit : 0;
 
@@ -49,4 +50,36 @@ trait LoadHandler
     {
         return $query->orderBy($sortBy, $sort);
     }
+
+    /**
+     * handle load with search && pagination
+     * @param $query
+     * @param  Request  $request
+     * @return mixed
+     */
+    public function scopeApplyFilters(
+        $query,
+        Request &$request,
+
+    ): mixed {
+        $createdToday = $request->boolean('createdToday',false);
+        $soldOut = $request->boolean('soldOut',false);
+        $priceMoreThan = $request->integer('priceMoreThan',0);
+        $priceLessThan = $request->integer('priceLessThan',0);
+
+        return $query->when($createdToday,function ($q){
+                    $q->where('created_at', '>=', Carbon::today());
+                })
+                ->when($soldOut,function ($q){
+                    $q->where('quantity','=',0);
+                })
+                ->when($priceMoreThan > 0,function ($q) use($priceMoreThan){
+                    $q->where('price', '>=', $priceMoreThan);
+                })
+                ->when($priceLessThan > 0,function ($q) use($priceLessThan){
+                    $q->where('price', '<=', $priceLessThan);
+                });
+
+    }
+
 }

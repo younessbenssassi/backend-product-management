@@ -10,7 +10,9 @@ use App\Http\Controllers\API\BaseController as BaseController;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class AuthController extends BaseController
 {
@@ -22,13 +24,16 @@ class AuthController extends BaseController
     public function register(RegisterRequest $request): JsonResponse
     {
         try {
-            $user = $request->all();
-            $user['password'] = Hash::make($user['password']);
-            $user = User::create($user);
-            $auth['token'] =  $user->createToken('ProductManagement')->plainTextToken;
-            $auth['user'] =  $user;
+            $auth = [];
+            DB::transaction(function () use (&$request, &$auth) {
+                $user = $request->all();
+                $user['password'] = Hash::make($user['password']);
+                $user = User::create($user);
+                $auth['token'] =  $user->createToken('ProductManagement')->plainTextToken;
+                $auth['user'] =  $user;
+            });
 
-            return $this->sendResponse($auth, 'User register successfully.');
+            return $this->sendResponse(['auth' => $auth], 'User register successfully.');
 
         } catch (\Exception $e) {
             return $this->sendError($e->getMessage());

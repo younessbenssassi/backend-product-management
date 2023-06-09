@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\Modules;
 
 
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
@@ -22,8 +23,9 @@ class ProductController extends BaseController
     public function index(Request $request): JsonResponse
     {
         try {
-            $products = Product::where('owner_id',Auth::user()->id)
+            $products = Product::where('user_id',Auth::user()->id)
                 ->loadWithParams($request)
+                ->applyFilters($request)
                 ->sort()
                 ->get();
 
@@ -69,7 +71,7 @@ class ProductController extends BaseController
                     array_merge(
                         $request->all(),
                         [
-                            'owner_id' => Auth::user()->id,
+                            'user_id' => Auth::user()->id,
                             'hash'=> Str::random(40),
                         ]
                     )
@@ -97,7 +99,7 @@ class ProductController extends BaseController
                 return $this->sendError('Product not found');
 
             DB::transaction(function ()use (&$product , &$request) {
-                $product->update($request->except('hash','owner_id'));
+                $product->update($request->except('hash','user_id'));
             });
 
             return $this->sendResponse(['product'=> $product], 'Product updated successfully.');
